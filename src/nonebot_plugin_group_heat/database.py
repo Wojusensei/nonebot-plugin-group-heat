@@ -3,17 +3,18 @@ import asyncio
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import List, Tuple
+from nonebot import require
+
+require("nonebot_plugin_localstore")
+import nonebot_plugin_localstore as store
+
+DATA_DIR = store.get_plugin_data_dir()
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+DB_PATH = DATA_DIR / "heat.db"
 
 
-def get_data_dir():
-    from nonebot_plugin_localstore import get_data_dir as _get_data_dir
-    return _get_data_dir("nonebot_plugin_group_heat")
-
-
-def get_db_path():
-    data_dir = get_data_dir()
-    data_dir.mkdir(parents=True, exist_ok=True)
-    return data_dir / "heat.db"
+def get_db_path() -> Path:
+    return DB_PATH
 
 
 async def init_db():
@@ -32,7 +33,7 @@ async def init_db():
         c.execute('CREATE INDEX IF NOT EXISTS idx_group_time ON messages (group_id, timestamp)')
         conn.commit()
         conn.close()
-    await asyncio.get_event_loop().run_in_executor(None, _init)
+    await asyncio.to_thread(_init)
 
 
 async def add_message(group_id: int, user_id: int, msg_type: str, timestamp: float):
@@ -45,7 +46,7 @@ async def add_message(group_id: int, user_id: int, msg_type: str, timestamp: flo
         )
         conn.commit()
         conn.close()
-    await asyncio.get_event_loop().run_in_executor(None, _add)
+    await asyncio.to_thread(_add)
 
 
 async def get_recent_heat(group_id: int, minutes: int = 30) -> float:
@@ -68,7 +69,7 @@ async def get_recent_heat(group_id: int, minutes: int = 30) -> float:
             elif msg_type == 'file':
                 heat += 0.3
         return heat
-    return await asyncio.get_event_loop().run_in_executor(None, _calc)
+    return await asyncio.to_thread(_calc)
 
 
 async def get_yesterday_heat(group_id: int) -> Tuple[List[float], List[str], float]:
@@ -108,7 +109,7 @@ async def get_yesterday_heat(group_id: int) -> Tuple[List[float], List[str], flo
                     heat += 0.3
             return heat
 
-        heat = await asyncio.get_event_loop().run_in_executor(None, _calc_interval)
+        heat = await asyncio.to_thread(_calc_interval)
         heat_values.append(heat)
         time_labels.append(interval_start.strftime("%H:%M"))
 

@@ -4,13 +4,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
 from typing import List
+from nonebot import require
 
+require("nonebot_plugin_localstore")
+import nonebot_plugin_localstore as store
 
-def get_cache_dir():
-    from nonebot_plugin_localstore import get_cache_dir as _get_cache_dir
-    cache_dir = _get_cache_dir("nonebot_plugin_group_heat")
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    return cache_dir
+CACHE_DIR = store.get_plugin_cache_dir()
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def draw_heat_line(heat_values: List[float], time_labels: List[str], avg_heat: float) -> Path:
@@ -36,7 +36,7 @@ def draw_heat_line(heat_values: List[float], time_labels: List[str], avg_heat: f
     ax.legend(loc='upper right')
     plt.tight_layout()
 
-    img_path = get_cache_dir() / "yesterday_heat.png"
+    img_path = CACHE_DIR / "yesterday_heat.png"
     plt.savefig(img_path, dpi=100, bbox_inches='tight')
     plt.close(fig)
 
