@@ -7,6 +7,7 @@ from nonebot.plugin import PluginMetadata
 from nonebot.log import logger
 
 from .config import Config
+from nonebot import get_plugin_config
 from .database import init_db, add_message, get_recent_heat, get_yesterday_heat
 from .heat_image import draw_heat_line, get_heat_comment
 
@@ -23,6 +24,7 @@ __plugin_meta__ = PluginMetadata(
     config=Config,
     supported_adapters={"~onebot.v11"},
 )
+config = get_plugin_config(Config)
 
 
 async def get_message_type(event: Event) -> str:

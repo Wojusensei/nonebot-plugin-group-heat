@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: nonebot-plugin-group-heat
-Version: 0.1.1
+Version: 0.1.3
 Summary: 群热度统计插件 - 实时查询群内热度，生成昨日热度折线图
 Author-email: Wojusensei <3442006415@qq.com>
 License: MIT
