@@ -34,6 +34,7 @@
 ```bash
 nb plugin install nonebot-plugin-group-heat
 pip install nonebot-plugin-group-heat(也可以)
+```
 
 ## 使用
 在群聊中发送以下命令：
