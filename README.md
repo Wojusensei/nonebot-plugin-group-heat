@@ -33,7 +33,7 @@
 
 ```bash
 nb plugin install nonebot-plugin-group-heat
-pip install nonebot-plugin-group-heat(也可以)
+pip install nonebot-plugin-group-heat
 ```
 
 ## 使用
@@ -42,6 +42,37 @@ pip install nonebot-plugin-group-heat(也可以)
 /群热度 - 查询过去30分钟的群热度
 
 /昨日热度图 - 获取昨日热度折线图
+
+## 配置
+默认即装即用，可选配置项（写入 .env 文件）：
+
+```ini
+group_heat_retention_days=7
+```
+
+消息记录保留天数，超过保留期的记录每天自动清理，防止数据库无限膨胀。
+
+## 数据存储
+- 消息记录与统计数据：SQLite，位于 localstore 插件数据目录
+- 热度图临时文件：渲染后即发即删
+
+## 0.2.0 更新日志
+
+- **修复**：`/群热度` 与 `/昨日热度图` 成功回复后还会追加一条“获取热度失败/生成热度图失败”的报错（`finish()` 抛出的 `FinishedException` 被宽泛的 `except Exception` 捕获所致）
+- **修复**：昨日全天无消息时不再输出 -10° 的误导性平线图，正确提示“暂无昨日数据”
+- **修复**：Linux 服务器上热度图中文全部显示为方框的问题（自动检测并使用系统可用的中文字体，覆盖 Windows/macOS/Linux 常见字体）
+- **修复**：热度图固定文件名导致多个群同时请求时互相覆盖（改为随机文件名，发送后即删）
+- **修复**：错误地把发布工具 `twine` 声明为运行时依赖
+- 新增消息记录保留期（默认 7 天），启动时与每日凌晨自动清理过期记录，防止数据库无限增长
+- 昨日热度统计由 48 次串行查询优化为单次 SQL 分桶聚合；开启 WAL 提升 SQLite 并发性能
+- `requires-python` 提升至 3.10，新增测试套件（nonebug + pytest，27 例）
+
+## 开发
+
+```bash
+pip install -e ".[test]"
+pytest
+```
 
 ## 开源协议
 MIT

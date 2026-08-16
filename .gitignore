@@ -4,3 +4,11 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .pdm-python
+
+# 构建产物
+dist/
+*.egg-info/
+
+# 虚拟环境
+.venv/
+venv/
