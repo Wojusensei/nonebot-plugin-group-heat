@@ -1,13 +1,39 @@
 from datetime import datetime
+from typing import Optional, Tuple
+
 from nonebot import on_command, on_message, get_driver, get_plugin_config, require
-from nonebot.adapters.onebot.v11 import Event, MessageSegment
-from nonebot.adapters.onebot.v11.event import GroupMessageEvent
+from nonebot.adapters import Event
 from nonebot.plugin import PluginMetadata
 from nonebot.log import logger
 
 require("nonebot_plugin_localstore")
 require("nonebot_plugin_apscheduler")
+require("nonebot_plugin_alconna")
+
 from nonebot_plugin_apscheduler import scheduler
+
+from nonebot_plugin_alconna.uniseg import (
+    Audio,
+    Emoji,
+    File,
+    Image,
+    Text,
+    UniMessage,
+    UniMsg,
+    Video,
+    Voice,
+)
+
+# 适配器按需导入：用户只装其中一个适配器时插件仍可正常加载
+try:
+    from nonebot.adapters.onebot.v11 import GroupMessageEvent as OBGroupMessageEvent
+except ImportError:
+    OBGroupMessageEvent = None
+
+try:
+    from nonebot.adapters.milky.event import GroupMessageEvent as MilkyGroupMessageEvent
+except ImportError:
+    MilkyGroupMessageEvent = None
 
 from .config import Config
 from .database import (
@@ -29,19 +55,31 @@ __plugin_meta__ = PluginMetadata(
     type="application",
     homepage="https://github.com/Wojusensei/nonebot-plugin-group-heat",
     config=Config,
-    supported_adapters={"~onebot.v11"},
+    supported_adapters={"~onebot.v11", "~milky"},
 )
 config = get_plugin_config(Config)
 
 
-async def get_message_type(event: Event) -> str:
-    msg = event.get_message()
+def get_group_scene(event: Event) -> Optional[Tuple[int, int]]:
+    """识别群消息事件，返回 (group_id, user_id)；非群消息返回 None"""
+    if OBGroupMessageEvent is not None and isinstance(event, OBGroupMessageEvent):
+        return event.group_id, event.user_id
+    if MilkyGroupMessageEvent is not None and isinstance(event, MilkyGroupMessageEvent):
+        return event.data.peer_id, event.data.sender_id
+    return None
+
+
+def classify_uniseg(msg: UniMessage) -> str:
+    """按通用消息段类型分类：text / sticker / file / other
+
+    与 0.2 语义一致：取第一个可计分的消息段。
+    """
     for seg in msg:
-        if seg.type == "text":
+        if isinstance(seg, Text):
             return "text"
-        elif seg.type == "face":
+        if isinstance(seg, Emoji):
             return "sticker"
-        elif seg.type in ("file", "image", "record", "video"):
+        if isinstance(seg, (Image, Video, Voice, Audio, File)):
             return "file"
     return "other"
 
@@ -70,13 +108,18 @@ msg_recorder = on_message(priority=1, block=False)
 
 
 @msg_recorder.handle()
-async def record_message(event: Event):
-    if not isinstance(event, GroupMessageEvent):
+async def record_message(event: Event, msg: UniMsg):
+    scene = get_group_scene(event)
+    if scene is None:
         return
 
-    msg_type = await get_message_type(event)
+    msg_type = classify_uniseg(msg)
+    if msg_type == "other":
+        return
+
+    group_id, user_id = scene
     timestamp = datetime.now().timestamp()
-    await add_message(event.group_id, event.user_id, msg_type, timestamp)
+    await add_message(group_id, user_id, msg_type, timestamp)
 
 
 heat_cmd = on_command("群热度", priority=10, block=True)
@@ -84,11 +127,13 @@ heat_cmd = on_command("群热度", priority=10, block=True)
 
 @heat_cmd.handle()
 async def handle_heat(event: Event):
-    if not isinstance(event, GroupMessageEvent):
+    scene = get_group_scene(event)
+    if scene is None:
         await heat_cmd.finish("该命令仅支持群聊")
 
+    group_id = scene[0]
     try:
-        heat = await get_recent_heat(event.group_id, minutes=30)
+        heat = await get_recent_heat(group_id, minutes=30)
     except Exception as e:
         logger.error(f"获取群热度失败: {e}")
         await heat_cmd.finish("获取热度失败，请稍后再试")
@@ -104,11 +149,13 @@ yesterday_cmd = on_command("昨日热度图", priority=10, block=True)
 
 @yesterday_cmd.handle()
 async def handle_yesterday(event: Event):
-    if not isinstance(event, GroupMessageEvent):
+    scene = get_group_scene(event)
+    if scene is None:
         await yesterday_cmd.finish("该命令仅支持群聊")
 
+    group_id = scene[0]
     try:
-        heat_values, time_labels, avg_heat = await get_yesterday_heat(event.group_id)
+        heat_values, time_labels, avg_heat = await get_yesterday_heat(group_id)
     except Exception as e:
         logger.error(f"生成昨日热度图失败: {e}")
         await yesterday_cmd.finish("生成热度图失败，请稍后再试")
@@ -125,7 +172,7 @@ async def handle_yesterday(event: Event):
     comment = get_heat_comment(avg_heat)
     msg = f"昨日群平均热度：{avg_heat:.2f}°\n{comment}"
     try:
-        await yesterday_cmd.send(MessageSegment.image(img_path))
+        await UniMessage.image(path=img_path).send()
         await yesterday_cmd.finish(msg)
     finally:
         # 图片发送完毕后删除临时文件

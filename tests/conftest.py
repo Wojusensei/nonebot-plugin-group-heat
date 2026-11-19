@@ -17,8 +17,10 @@ os.environ["LOCALSTORE_CACHE_DIR"] = str(Path(_tmp) / "cache")
 
 import nonebot
 from nonebot.adapters.onebot.v11 import Adapter as OnebotV11Adapter
+from nonebot.adapters.milky import Adapter as MilkyAdapter
 
 nonebot.init()
 driver = nonebot.get_driver()
 driver.register_adapter(OnebotV11Adapter)
+driver.register_adapter(MilkyAdapter)
 nonebot.load_plugin("nonebot_plugin_group_heat")

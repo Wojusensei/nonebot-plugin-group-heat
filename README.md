@@ -2,6 +2,8 @@
 
 群热度统计插件 for NoneBot2
 
+**支持适配器**：OneBot V11（NapCat / Lagrange / LLOneBot 等）与 Milky
+
 ## 功能
 
 - `/群热度` - 获取过去30分钟的群热度值，附带 bot 评价
@@ -55,6 +57,13 @@ group_heat_retention_days=7
 ## 数据存储
 - 消息记录与统计数据：SQLite，位于 localstore 插件数据目录
 - 热度图临时文件：渲染后即发即删
+
+## 0.3.0 更新日志
+
+- **新增 Milky 适配器支持**：基于 nonebot-plugin-alconna 的通用消息段抽象重构，
+  消息记录、热度查询、热度图发送全面跨适配器；OneBot v11 行为保持不变
+- 适配器改为按需导入：只安装其一适配器的环境也能正常加载本插件
+- 元数据如实声明 `supported_adapters={"~onebot.v11", "~milky"}`
 
 ## 0.2.0 更新日志
 
